@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
+	"os"
 	"time"
 
 	"github.com/libp2p/go-libp2p"
 	relaydaemon "github.com/libp2p/go-libp2p-relay-daemon"
+	"github.com/libp2p/go-libp2p/core/pnet"
 	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
 	relayv1 "github.com/libp2p/go-libp2p/p2p/protocol/circuitv1/relay"
 	relayv2 "github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
@@ -19,6 +21,7 @@ import (
 func main() {
 	idPath := flag.String("id", "identity", "identity key file path")
 	cfgPath := flag.String("config", "", "json configuration file; empty uses the default configuration")
+	swarmKeyPath := flag.String("swarm", "", "swarm key path")
 	flag.Parse()
 
 	cfg, err := relaydaemon.LoadConfig(*cfgPath)
@@ -31,6 +34,19 @@ func main() {
 	}
 
 	var opts []libp2p.Option
+
+	if swarmKeyPath != nil && *swarmKeyPath != "" {
+		f, err := os.Open(*swarmKeyPath)
+		if err != nil {
+			panic(err)
+		}
+		privateNetworkKey, err := pnet.DecodeV1PSK(f)
+		if err != nil {
+			panic(err)
+		}
+		_ = f.Close()
+		opts = append(opts, libp2p.PrivateNetwork(privateNetworkKey))
+	}
 
 	opts = append(opts,
 		libp2p.UserAgent("relayd/1.0"),
